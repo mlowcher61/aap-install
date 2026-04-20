@@ -34,6 +34,8 @@ Copy the SHA256 checksum and update `playbooks/files/distributions.yml`.
 
 ```bash
 useradd -m ansible-svc
+echo "ansible-svc ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/ansible-svc
+chmod 0440 /etc/sudoers.d/ansible-svc
 ```
 
 ### 4. Clone the repository

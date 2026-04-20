@@ -1,0 +1,5 @@
+# Place the SSH public key for the ansible-svc account here.
+# Example:
+#   cat ~/.ssh/id_rsa.pub > playbooks/files/public_keys/ansible-svc
+# Or paste the key directly:
+# ssh-rsa AAAA... user@host

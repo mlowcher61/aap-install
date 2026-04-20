@@ -1,0 +1,4 @@
+playbooks/files/vault.yml
+*.retry
+*.pyc
+__pycache__/

@@ -1,0 +1,35 @@
+---
+# Copy this file to playbooks/files/vault.yml and encrypt it:
+#   cp playbooks/example_vault.yml playbooks/files/vault.yml
+#   ansible-vault encrypt playbooks/files/vault.yml
+
+# Red Hat Customer Portal offline token
+# Obtain from: https://access.redhat.com/management/api
+offline_token: OFFLINE_TOKEN_HERE
+
+# Red Hat registry credentials
+registry_username: YOUR_RH_USERNAME
+registry_password: YOUR_RH_PASSWORD
+
+# Dedicated non-root service account for the containerized install
+user_password: SERVICE_ACCOUNT_PASSWORD
+
+# PostgreSQL admin
+postgresql_admin_username: postgres
+postgresql_admin_password: POSTGRESQL_ADMIN_PASSWORD
+
+# Automation Gateway
+gateway_admin_password: GATEWAY_ADMIN_PASSWORD
+gateway_pg_password: GATEWAY_PG_PASSWORD
+
+# Automation Controller
+controller_admin_password: CONTROLLER_ADMIN_PASSWORD
+controller_pg_password: CONTROLLER_PG_PASSWORD
+
+# Automation Hub
+hub_admin_password: HUB_ADMIN_PASSWORD
+hub_pg_password: HUB_PG_PASSWORD
+
+# Event-Driven Ansible
+eda_admin_password: EDA_ADMIN_PASSWORD
+eda_pg_password: EDA_PG_PASSWORD

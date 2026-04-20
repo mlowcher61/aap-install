@@ -1,0 +1,9 @@
+---
+distributions:
+  - name: 2.6cb
+    rh_distro: "9"
+    architecture: x86_64
+    # Obtain the SHA256 checksum from:
+    # https://access.redhat.com/downloads/content/480/
+    # Select: Ansible Automation Platform 2.6 | Containerized Setup Bundle | RHEL 9 x86_64
+    aap_sha_value: REPLACE_WITH_SHA256_FROM_RED_HAT_PORTAL

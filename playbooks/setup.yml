@@ -1,0 +1,199 @@
+---
+- name: Setting up the Ansible Automation Platform 2.6 install
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    aap_user: ansible-svc
+    aap_user_home: /home/ansible-svc
+    aap_user_comment: AAP Service Account
+
+  vars_files:
+    - ./files/distributions.yml
+    - ./files/vault.yml
+
+  vars_prompt:
+    - name: controller_url
+      prompt: What is your server's fully qualified domain name?
+      private: false
+
+    - name: ssh_public_key_path
+      prompt: "Path to SSH public key for the ansible-svc account"
+      private: false
+      default: "~/.ssh/id_rsa.pub"
+
+  tasks:
+
+    - name: Get disk space
+      register: diskspace
+      changed_when: false
+      ansible.builtin.command:
+        cmd: lsblk -f
+
+    - name: Get podman version
+      register: podman_version
+      changed_when: false
+      ansible.builtin.command:
+        cmd: podman --version
+
+    - name: Print system checks
+      ansible.builtin.debug:
+        msg:
+          - "Controller FQDN: {{ controller_url }}"
+          - "Total memory: {{ ansible_memtotal_mb }} MB (minimum 16384 MB required)"
+          - "CPU count: {{ ansible_processor_vcpus }} (minimum 4 required)"
+          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }} {{ ansible_userspace_architecture }} (RHEL 9 required)"
+          - "Disk space (minimum 60 GB / 3000 IOPS required):"
+          - "{{ diskspace.stdout_lines }}"
+          - "{{ podman_version.stdout_lines }}"
+
+    - name: Confirm system requirements are met
+      ansible.builtin.pause:
+        prompt: >-
+          Please confirm the system meets all requirements and it is safe to proceed.
+          Press Enter to continue or Ctrl+C then 'a' to abort.
+
+    - name: Ensure ansible-svc group exists
+      ansible.builtin.group:
+        name: "{{ aap_user }}"
+        state: present
+
+    - name: Ensure ansible-svc user exists
+      ansible.builtin.user:
+        name: "{{ aap_user }}"
+        group: "{{ aap_user }}"
+        comment: "{{ aap_user_comment }}"
+        home: "{{ aap_user_home }}"
+        password: "{{ user_password | password_hash('sha512') }}"
+        update_password: on_create
+        state: present
+      no_log: true
+
+    - name: Ensure ansible-svc has passwordless sudo
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/{{ aap_user }}
+        content: "{{ aap_user }} ALL=(ALL) NOPASSWD: ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Ensure SSH public key is authorised for ansible-svc
+      ansible.posix.authorized_key:
+        user: "{{ aap_user }}"
+        state: present
+        key: "{{ lookup('file', ssh_public_key_path) }}"
+
+    - name: Get Red Hat Customer Portal access token
+      register: access_token
+      until: access_token is not failed
+      retries: 3
+      delay: 20
+      ansible.builtin.uri:
+        url: https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token
+        method: POST
+        body_format: form-urlencoded
+        return_content: true
+        body:
+          grant_type: refresh_token
+          client_id: rhsm-api
+          refresh_token: "{{ offline_token }}"
+      no_log: true
+
+    - name: Set bundle facts from distributions.yml
+      ansible.builtin.set_fact:
+        aap_checksum: "{{ distributions[0].aap_sha_value }}"
+
+    - name: Check if AAP bundle has already been downloaded
+      register: bundle_stat
+      ansible.builtin.stat:
+        path: "{{ aap_user_home }}/aap26cb.tar.gz"
+
+    - name: Download AAP 2.6 containerized bundle
+      register: download_bundle
+      until: download_bundle is not failed
+      retries: 5
+      delay: 20
+      ansible.builtin.get_url:
+        url: "https://api.access.redhat.com/management/v1/images/{{ aap_checksum }}/download"
+        headers:
+          accept: application/json
+          Authorization: "Bearer {{ access_token.json.access_token }}"
+        dest: "{{ aap_user_home }}/aap26cb.tar.gz"
+        checksum: "sha256:{{ aap_checksum }}"
+        owner: "{{ aap_user }}"
+        group: "{{ aap_user }}"
+        mode: "0644"
+      when: not bundle_stat.stat.exists
+
+    - name: Check if AAP bundle has already been extracted
+      register: extracted_sentinel
+      ansible.builtin.stat:
+        path: "{{ aap_user_home }}/aap26cb_extracted"
+
+    - name: Extract AAP 2.6 bundle
+      ansible.builtin.unarchive:
+        src: "{{ aap_user_home }}/aap26cb.tar.gz"
+        dest: "{{ aap_user_home }}/"
+        remote_src: true
+        owner: "{{ aap_user }}"
+        group: "{{ aap_user }}"
+      when: not extracted_sentinel.stat.exists
+
+    - name: Create sentinel file to mark bundle as extracted
+      ansible.builtin.copy:
+        content: ""
+        dest: "{{ aap_user_home }}/aap26cb_extracted"
+        owner: "{{ aap_user }}"
+        group: "{{ aap_user }}"
+        mode: "0444"
+      when: not extracted_sentinel.stat.exists
+
+    - name: Discover extracted bundle directory name
+      register: bundle_dir_result
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          ls -d ansible-automation-platform-containerized-setup-bundle-2.6-* | grep -v tar.gz
+      args:
+        chdir: "{{ aap_user_home }}/"
+
+    - name: Set bundle directory fact
+      ansible.builtin.set_fact:
+        aap_bundle_dir: "{{ aap_user_home }}/{{ bundle_dir_result.stdout }}"
+
+    - name: Write inventory-growth file into bundle directory
+      ansible.builtin.template:
+        src: inventory-growth.j2
+        dest: "{{ aap_bundle_dir }}/inventory-growth"
+        owner: "{{ aap_user }}"
+        group: "{{ aap_user }}"
+        mode: "0644"
+        backup: true
+
+    - name: Copy vault file into bundle directory
+      ansible.builtin.copy:
+        src: vault.yml
+        dest: "{{ aap_bundle_dir }}/vault.yml"
+        owner: "{{ aap_user }}"
+        group: "{{ aap_user }}"
+        mode: "0640"
+        decrypt: false
+
+    - name: Print next steps
+      ansible.builtin.debug:
+        msg:
+          - "================================================"
+          - "Setup complete! To run the AAP installer:"
+          - ""
+          - "  1. Log out and log back in as ansible-svc:"
+          - "       su - ansible-svc"
+          - ""
+          - "  2. Change to the installer directory:"
+          - "       cd {{ aap_bundle_dir }}"
+          - ""
+          - "  3. Run the installer:"
+          - "       ansible-playbook -i inventory-growth ansible.containerized_installer.install -e@vault.yml --ask-vault-pass"
+          - "================================================"

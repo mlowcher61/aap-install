@@ -18,6 +18,11 @@
       prompt: What is your server's fully qualified domain name?
       private: false
 
+    - name: rh_distro
+      prompt: "Which RHEL version is this server running? (9 or 10)"
+      private: false
+      default: "9"
+
     - name: ssh_public_key_path
       prompt: "Path to SSH public key for the ansible-svc account"
       private: false
@@ -43,7 +48,7 @@
           - "Controller FQDN: {{ controller_url }}"
           - "Total memory: {{ ansible_memtotal_mb }} MB (minimum 16384 MB required)"
           - "CPU count: {{ ansible_processor_vcpus }} (minimum 4 required)"
-          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }} {{ ansible_userspace_architecture }} (RHEL 9 required)"
+          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }} {{ ansible_userspace_architecture }} (selected: RHEL {{ rh_distro }})"
           - "Disk space (minimum 60 GB / 3000 IOPS required):"
           - "{{ diskspace.stdout_lines }}"
           - "{{ podman_version.stdout_lines }}"
@@ -103,7 +108,11 @@
 
     - name: Set bundle facts from distributions.yml
       ansible.builtin.set_fact:
-        aap_checksum: "{{ distributions[0].aap_sha_value }}"
+        aap_checksum: >-
+          {{ (distributions
+              | selectattr('name', 'equalto', '2.6cb')
+              | selectattr('rh_distro', 'equalto', rh_distro)
+              | list | first).aap_sha_value }}
 
     - name: Check if AAP bundle has already been downloaded
       register: bundle_stat

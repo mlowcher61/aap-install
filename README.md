@@ -46,7 +46,7 @@ ansible-galaxy collection install -r collections/requirements.yml -p ./collectio
 ### 5. Create and encrypt your vault file
 
 ```bash
-cp playbooks/example_vault.yml playbooks/files/vault.yml
+cp playbooks/files/example_vault.yml playbooks/files/vault.yml
 ```
 
 Edit `playbooks/files/vault.yml` and fill in all values, then encrypt it:
@@ -96,7 +96,7 @@ ansible-playbook -i inventory-growth ansible.containerized_installer.install -e@
 | File | Purpose |
 |------|---------|
 | `playbooks/setup.yml` | Main setup playbook |
-| `playbooks/example_vault.yml` | Example vault — copy to `playbooks/files/vault.yml` and encrypt |
+| `playbooks/files/example_vault.yml` | Example vault — copy to `playbooks/files/vault.yml` and encrypt |
 | `playbooks/files/vault.yml` | Your encrypted vault (gitignored — never commit) |
 | `playbooks/files/distributions.yml` | AAP 2.6 bundle SHA256 checksum |
 | `playbooks/files/public_keys/ansible-svc` | SSH public key for the ansible-svc account |

@@ -51,6 +51,9 @@ controller_pg_username=awx
 controller_pg_password={{ controller_pg_password }}
 
 # Automation Hub
+# hub_seed_collections=false skips seeding default collections into Private
+# Automation Hub during install. Set to true to seed on install instead.
+hub_seed_collections=false
 hub_admin_password={{ hub_admin_password }}
 hub_pg_host={{ controller_url }}
 hub_pg_database=automationhub

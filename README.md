@@ -120,3 +120,11 @@ ansible-playbook -i inventory-growth ansible.containerized_installer.install -e@
 - The `playbooks/files/vault.yml` file is gitignored and must never be committed.
 - The Red Hat offline token expires after 30 days of non-use. Refresh it at https://access.redhat.com/management/api before running the playbook if it has been idle.
 - Minimum system requirements: 16 GB RAM, 4 vCPUs, 60 GB disk, Podman installed.
+
+## Automation Hub collection seeding
+
+`hub_seed_collections=false` is set in the `inventory-growth` template by default. This means the installer will **not** automatically sync the default Red Hat certified and community collections into Private Automation Hub during installation. The install completes faster and Hub is fully operational — it simply starts empty.
+
+To populate Hub with collections after installation, log in to the Automation Hub UI and configure a remote repository sync, or use the Hub API to upload content manually.
+
+To enable collection seeding during install, change `hub_seed_collections=false` to `hub_seed_collections=true` in `playbooks/templates/inventory-growth.j2` before running the setup playbook. Note that seeding requires the server to have internet access to `cloud.redhat.com` and will add significant time to the installation.

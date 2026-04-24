@@ -1,0 +1,175 @@
+---
+- name: AAP containerized install preflight check for RHEL 9
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    aap_install_user: "ansible-svc"
+
+    required_packages:
+      - podman
+      - podman-docker
+      - buildah
+      - skopeo
+      - conmon
+      - crun
+      - containers-common
+      - container-selinux
+      - slirp4netns
+      - fuse-overlayfs
+      - uidmap
+      - shadow-utils
+      - systemd
+      - systemd-libs
+      - systemd-pam
+      - dbus
+      - dbus-daemon
+      - dbus-broker
+      - iproute
+      - curl
+      - tar
+      - gzip
+      - rsync
+      - python3
+      - python3-libselinux
+      - python3-policycoreutils
+      - policycoreutils
+      - policycoreutils-python-utils
+      - libselinux
+
+    required_repos:
+      - rhel-9-for-x86_64-baseos-rpms
+      - rhel-9-for-x86_64-appstream-rpms
+     # - rhel-9-for-x86_64-extras-rpms #optional, only needed if any of the required packages are in extras
+     # - ansible-automation-platform-2.6-for-rhel-9-x86_64-rpms #optional, only needed if installing AAP from RHEL 9 repos
+
+  tasks:
+    - name: Confirm host is RHEL 9
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "RedHat"
+          - ansible_distribution_major_version == "9"
+        fail_msg: "This host is not RHEL 9."
+        success_msg: "Host is RHEL 9."
+
+    - name: Check enabled repositories
+      ansible.builtin.command: subscription-manager repos --list-enabled
+      register: enabled_repos
+      changed_when: false
+      failed_when: false
+
+    - name: Report missing required repositories
+      ansible.builtin.debug:
+        msg: "MISSING REPO: {{ item }}"
+      loop: "{{ required_repos }}"
+      when: item not in enabled_repos.stdout
+
+    - name: Check required package availability
+      ansible.builtin.command: "dnf list available {{ item }}"
+      register: package_available
+      changed_when: false
+      failed_when: false
+      loop: "{{ required_packages }}"
+
+    - name: Report packages not available from enabled repos
+      ansible.builtin.debug:
+        msg: "PACKAGE NOT AVAILABLE FROM ENABLED REPOS: {{ item.item }}"
+      loop: "{{ package_available.results }}"
+      when: item.rc != 0
+
+    - name: Install required packages
+      ansible.builtin.dnf:
+        name: "{{ required_packages }}"
+        state: present
+      register: package_install_result
+
+    - name: Ensure install user exists
+      ansible.builtin.user:
+        name: "{{ aap_install_user }}"
+        state: present
+        create_home: true
+        shell: /bin/bash
+
+    - name: Enable linger for AAP install user
+      ansible.builtin.command: "loginctl enable-linger {{ aap_install_user }}"
+      changed_when: false
+
+    - name: Check linger status
+      ansible.builtin.command: "loginctl show-user {{ aap_install_user }}"
+      register: linger_status
+      changed_when: false
+      failed_when: false
+
+    - name: Validate linger is enabled
+      ansible.builtin.assert:
+        that:
+          - "'Linger=yes' in linger_status.stdout"
+        fail_msg: "Linger is not enabled for {{ aap_install_user }}."
+        success_msg: "Linger is enabled for {{ aap_install_user }}."
+
+    - name: Check Podman version
+      ansible.builtin.command: podman --version
+      register: podman_version
+      changed_when: false
+
+    - name: Show Podman version
+      ansible.builtin.debug:
+        var: podman_version.stdout
+
+    - name: Check podman info as install user
+      ansible.builtin.command: podman info
+      become: true
+      become_user: "{{ aap_install_user }}"
+      register: podman_info
+      changed_when: false
+      failed_when: false
+
+    - name: Report podman info result
+      ansible.builtin.debug:
+        msg: "{{ podman_info.stdout_lines | default([]) }}"
+
+    - name: Check user systemd status as install user
+      ansible.builtin.command: systemctl --user status
+      become: true
+      become_user: "{{ aap_install_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ lookup('pipe', 'id -u ' ~ aap_install_user) }}"
+      register: systemctl_user_status
+      changed_when: false
+      failed_when: false
+
+    - name: Report user systemd failure
+      ansible.builtin.debug:
+        msg:
+          - "systemctl --user failed for {{ aap_install_user }}"
+          - "stdout: {{ systemctl_user_status.stdout }}"
+          - "stderr: {{ systemctl_user_status.stderr }}"
+      when: systemctl_user_status.rc != 0
+
+    - name: Check podman socket as install user
+      ansible.builtin.command: systemctl --user enable --now podman.socket
+      become: true
+      become_user: "{{ aap_install_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ lookup('pipe', 'id -u ' ~ aap_install_user) }}"
+      register: podman_socket_result
+      changed_when: "'Created symlink' in podman_socket_result.stdout"
+      failed_when: false
+
+    - name: Report podman socket result
+      ansible.builtin.debug:
+        msg:
+          - "rc: {{ podman_socket_result.rc }}"
+          - "stdout: {{ podman_socket_result.stdout }}"
+          - "stderr: {{ podman_socket_result.stderr }}"
+
+    - name: Final preflight summary
+      ansible.builtin.debug:
+        msg:
+          - "AAP preflight completed."
+          - "If podman.socket failed with 'No medium found' or 'Permission denied', log out and SSH directly as {{ aap_install_user }}."
+          - "Then run: systemctl --user enable --now podman.socket"
+# This playbook is specifically designed to check for the requirements needed to run a containerized AAP installation on RHEL 9. It checks for the presence of required packages, ensures that the specified install user exists and has linger enabled, and verifies that Podman can be used by the install user. If there are issues with podman.socket, it provides guidance on how to troubleshoot by logging in directly as the install user and enabling the socket.
+# ansible-playbook -i inventory aap_rhel9_preflight.yml -e aap_install_user=ansible-svc      
+#- "If there are still issues with podman.socket, check that linger is enabled and that the user has permission to access the podman socket file."

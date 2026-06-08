@@ -1,6 +1,6 @@
 # aap-install
 
-Installs Ansible Automation Platform 2.6 (containerized bundle) on a fresh RHEL 9 or RHEL 10 system using ansible-core.
+Installs Ansible Automation Platform 2.7 (containerized bundle) on a fresh RHEL 9 or RHEL 10 system using ansible-core.
 
 ---
 
@@ -85,7 +85,7 @@ You will be prompted for:
 The playbook will:
 - Validate system requirements
 - Configure the `ansible-svc` service account (sudo, SSH key, password)
-- Download the AAP 2.6 bundle from the Red Hat Customer Portal
+- Download the AAP 2.7 bundle from the Red Hat Customer Portal
 - Extract the bundle
 - Write the `inventory-growth` file with your configuration
 - Copy the vault file into the installer directory
@@ -96,7 +96,7 @@ Switch to the `ansible-svc` account and run the installer:
 
 ```bash
 su - ansible-svc
-cd ~/ansible-automation-platform-containerized-setup-bundle-2.6-*
+cd ~/ansible-automation-platform-containerized-setup-bundle-2.7-*
 ansible-playbook -i inventory-growth ansible.containerized_installer.install -e@vault.yml --ask-vault-pass
 ```
 
@@ -109,7 +109,7 @@ ansible-playbook -i inventory-growth ansible.containerized_installer.install -e@
 | `playbooks/setup.yml` | Main setup playbook |
 | `playbooks/files/example_vault.yml` | Example vault — copy to `playbooks/files/vault.yml` and encrypt |
 | `playbooks/files/vault.yml` | Your encrypted vault (gitignored — never commit) |
-| `playbooks/files/distributions.yml` | AAP 2.6 bundle SHA256 checksums |
+| `playbooks/files/distributions.yml` | AAP 2.7 bundle SHA256 checksums |
 | `playbooks/files/public_keys/ansible-svc` | SSH public key for the ansible-svc account |
 | `playbooks/templates/inventory-growth.j2` | Template rendered into the AAP bundle's inventory-growth |
 

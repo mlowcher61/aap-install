@@ -1,12 +1,12 @@
 ---
 distributions:
-  - name: 2.7cb
-    rh_distro: "9"
-    architecture: x86_64
-    # Obtain the SHA256 checksum from:
-    # https://access.redhat.com/downloads/content/480/
-    # Select: Ansible Automation Platform 2.6 | Containerized Setup Bundle | RHEL 9 x86_64
-    aap_sha_value: 12343d643503d61fb0353f9af167a8f6cf0e6e53a5f7b206c1900fb4f9610863
+  # - name: 2.7cb
+  #   rh_distro: "9"
+  #   architecture: x86_64
+  #   # Obtain the SHA256 checksum from:
+  #   # https://access.redhat.com/downloads/content/480/
+  #   # Select: Ansible Automation Platform 2.6 | Containerized Setup Bundle | RHEL 9 x86_64
+  #   aap_sha_value: 12343d643503d61fb0353f9af167a8f6cf0e6e53a5f7b206c1900fb4f9610863
 
   - name: 2.6cb
     rh_distro: "9"
@@ -16,11 +16,11 @@ distributions:
     # Select: Ansible Automation Platform 2.6 | Containerized Setup Bundle | RHEL 9 x86_64
     aap_sha_value: d35e6ea83f295ec67d98e0cec323667234dc6dd50267701d5ebdff63e24a81c1
 
-  - name: 2.6cb
-    rh_distro: "10"
-    architecture: x86_64
-    # Obtain the SHA256 checksum from:
-    # https://access.redhat.com/downloads/content/480/
-    # Select: Ansible Automation Platform 2.6 | Containerized Setup Bundle | RHEL 10 x86_64
-    aap_sha_value: d35e6ea83f295ec67d98e0cec323667234dc6dd50267701d5ebdff63e24a81c1
+  # - name: 2.6cb
+  #   rh_distro: "10"
+  #   architecture: x86_64
+  #   # Obtain the SHA256 checksum from:
+  #   # https://access.redhat.com/downloads/content/480/
+  #   # Select: Ansible Automation Platform 2.6 | Containerized Setup Bundle | RHEL 10 x86_64
+  #   aap_sha_value: d35e6ea83f295ec67d98e0cec323667234dc6dd50267701d5ebdff63e24a81c1
 ...
